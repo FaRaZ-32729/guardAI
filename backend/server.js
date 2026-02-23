@@ -1,14 +1,14 @@
 const express = require("express");
-const dotenv = require("dotenv");
-const dbConnection = require("./src/config/dbConnection");
+require("dotenv").config();
+const dbConfig = require("./src/config/dbConfig");
+const centralRoute = require("./src/routes/centralRoute");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const path = require("path");
 const http = require("http");
 
 
-dotenv.config();
-dbConnection();
+dbConfig();
 const port = process.env.PORT || 5051;
 const app = express();
 
@@ -37,7 +37,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 // Routes
-
+app.use("/api", centralRoute)
 
 app.get("/", (req, res) => {
     res.send("Hellow FaRaZ to IOTFIY-LuckyOne");
@@ -49,5 +49,5 @@ app.get("/", (req, res) => {
 
 // Start server
 app.listen(port, () => {
-    console.log(`Express & WebSocket is running on port : ${port}`);
+    console.log(`AI-Guard Server is running on port : ${port}`);
 })
