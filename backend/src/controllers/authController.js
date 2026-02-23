@@ -1,5 +1,6 @@
 const userModel = require('../models/userModel');
 const bcrypt = require('bcryptjs');
+const jwt = require("jsonwebtoken");
 
 // Register Admin
 const registerAdmin = async (req, res) => {
@@ -33,6 +34,66 @@ const registerAdmin = async (req, res) => {
     }
 };
 
+
+// LOGIN ADMIN
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({ message: "Email and password are required" });
+        }
+
+        // Find admin only
+        const admin = await userModel.findOne({ email, role: 'admin' });
+
+        if (!admin) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // Compare password
+        const isMatch = await bcrypt.compare(password, admin.password);
+
+        if (!isMatch) {
+            return res.status(400).json({ message: "Invalid credentials" });
+        }
+
+        // Generate JWT
+        const token = jwt.sign(
+            { _id: admin._id },
+            process.env.JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        // Save token in HTTP-only cookie
+        res.cookie("token", token, {
+            httpOnly: true,
+            secure: false, // true in production (HTTPS)
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        return res.status(200).json({
+            message: "Login successful",
+            user: admin
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: "Server error" });
+    }
+};
+
+
+const me = async (req, res) => {
+    res.json({
+        message: "Welcome Admin",
+        user: req.user
+    });
+};
+
 module.exports = {
-    registerAdmin
+    registerAdmin,
+    login,
+    me
 }

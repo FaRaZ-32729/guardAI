@@ -41,24 +41,34 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // Pre-save hook to enforce role-based required fields
-userSchema.pre('save', function (next) {
+userSchema.pre('save', async function () {
+
     if (this.role === 'admin') {
         if (!this.name || !this.email || !this.password) {
-            return next(new Error('Admin must have name, email, and password'));
+            throw new Error('Admin must have name, email, and password');
         }
-        // Remove fields that admin should not have
+
         this.studentRollNumber = undefined;
         this.parentsEmail = undefined;
         this.face = undefined;
         this.department = undefined;
-    } else if (this.role === 'student') {
-        if (!this.name || !this.email || !this.studentRollNumber || !this.parentsEmail || !this.face || !this.department) {
-            return next(new Error('Student must have all fields except password'));
+    }
+
+    if (this.role === 'student') {
+        if (
+            !this.name ||
+            !this.email ||
+            !this.studentRollNumber ||
+            !this.parentsEmail ||
+            !this.face ||
+            this.face.length === 0 ||
+            !this.department
+        ) {
+            throw new Error('Student must have all fields except password');
         }
-        // Remove password if present for student
+
         this.password = undefined;
     }
-    next();
 });
 
 const userModel = mongoose.model('User', userSchema);

@@ -1,17 +1,34 @@
 const userModel = require("../models/userModel");
 
 // Register Student
+
 const registerStudent = async (req, res) => {
     try {
-        const { name, email, studentRollNumber, parentsEmail, face, department } = req.body;
+        const { name, email, studentRollNumber, parentsEmail, department } = req.body;
 
-        if (!name || !email || !studentRollNumber || !parentsEmail || !face || !department) {
-            return res.status(404).json({ message: "All fields are required" })
+        // Basic validation
+        if (!name || !email || !studentRollNumber || !parentsEmail || !department) {
+            return res.status(400).json({ message: "All fields are required" });
         }
 
-        // Check if student already exists
-        let existing = await userModel.findOne({ $or: [{ email }, { studentRollNumber }] });
-        if (existing) return res.status(400).json({ message: 'Student already exists' });
+        // Validate uploaded images
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: "At least one face image is required" });
+        }
+
+        // Check duplicate
+        const existing = await userModel.findOne({
+            $or: [{ email }, { studentRollNumber }]
+        });
+
+        if (existing) {
+            return res.status(400).json({ message: "Student already exists" });
+        }
+
+        // Convert files to URLs
+        const faceUrls = req.files.map(file => {
+            return `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
+        });
 
         // Create student
         const student = new userModel({
@@ -19,16 +36,21 @@ const registerStudent = async (req, res) => {
             email,
             studentRollNumber,
             parentsEmail,
-            face,
+            face: faceUrls,
             department,
-            role: 'student'
+            role: "student"
         });
 
         await student.save();
-        return res.status(201).json({ message: 'Student registered successfully' });
-    } catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: 'Server error' });
+
+        return res.status(201).json({
+            message: "Student registered successfully",
+            student
+        });
+
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ message: error.message || "Server error" });
     }
 };
 
