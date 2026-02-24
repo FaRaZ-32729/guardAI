@@ -23,11 +23,9 @@ const userSchema = new mongoose.Schema({
         lowercase: true,
         trim: true
     },
-    face: [
-        {
-            type: String // store image URLs
-        }
-    ],
+    face: {
+        type: String
+    },
     department: {
         type: String,
         trim: true
@@ -61,7 +59,6 @@ userSchema.pre('save', async function () {
             !this.studentRollNumber ||
             !this.parentsEmail ||
             !this.face ||
-            this.face.length === 0 ||
             !this.department
         ) {
             throw new Error('Student must have all fields except password');

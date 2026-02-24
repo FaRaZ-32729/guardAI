@@ -34,7 +34,6 @@ const registerAdmin = async (req, res) => {
     }
 };
 
-
 // LOGIN ADMIN
 const login = async (req, res) => {
     try {
@@ -84,16 +83,32 @@ const login = async (req, res) => {
     }
 };
 
+// logout user 
+const logoutUser = async (req, res) => {
+    try {
+        res.clearCookie("token", { httpOnly: true, sameSite: "none", path: "/", secure: true });
+        return res.status(200).json({ success: true, message: "Logged out successfully" });
+    } catch (error) {
+        console.error("Error in logout:", error);
+        return res.status(500).json({ success: false, message: "Logout failed" });
+    }
+};
 
 const me = async (req, res) => {
-    res.json({
-        message: "Welcome Admin",
-        user: req.user
-    });
+    try {
+        return res.status(200).json({
+            message: "Welcome",
+            user: req.user
+        });
+    } catch (error) {
+        console.log("error while fetching authanticated user");
+        return res.status(500).json({ message: "Server Error" });
+    }
 };
 
 module.exports = {
     registerAdmin,
     login,
-    me
+    me,
+    logoutUser
 }

@@ -1,7 +1,8 @@
 const userModel = require("../models/userModel");
+const fs = require("fs");
+const path = require("path");
 
 // Register Student
-
 const registerStudent = async (req, res) => {
     try {
         const { name, email, studentRollNumber, parentsEmail, department } = req.body;
@@ -12,8 +13,8 @@ const registerStudent = async (req, res) => {
         }
 
         // Validate uploaded images
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ message: "At least one face image is required" });
+        if (!req.file) {
+            return res.status(400).json({ message: "Face image is required" });
         }
 
         // Check duplicate
@@ -25,10 +26,9 @@ const registerStudent = async (req, res) => {
             return res.status(400).json({ message: "Student already exists" });
         }
 
-        // Convert files to URLs
-        const faceUrls = req.files.map(file => {
-            return `${req.protocol}://${req.get("host")}/uploads/${file.filename}`;
-        });
+        // Create image URL
+        const faceUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
 
         // Create student
         const student = new userModel({
@@ -36,7 +36,7 @@ const registerStudent = async (req, res) => {
             email,
             studentRollNumber,
             parentsEmail,
-            face: faceUrls,
+            face: faceUrl,
             department,
             role: "student"
         });
@@ -54,7 +54,125 @@ const registerStudent = async (req, res) => {
     }
 };
 
+const getAllStudents = async (req, res) => {
+    try {
+        const students = await userModel.find({ role: "student" });
+
+        return res.status(200).json({
+            count: students.length,
+            students
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const getSingleStudent = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const student = await userModel.findOne({ _id: id, role: "student" });
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        return res.status(200).json(student);
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const updateStudent = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const student = await userModel.findOne({ _id: id, role: "student" });
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        // Update text fields if provided
+        const fields = ["name", "email", "studentRollNumber", "parentsEmail", "department"];
+
+        fields.forEach(field => {
+            if (req.body[field]) {
+                student[field] = req.body[field];
+            }
+        });
+
+        // If new image uploaded
+        if (req.file) {
+            // Delete old image
+            if (student.face) {
+                const oldImagePath = path.join(
+                    __dirname,
+                    "../../uploads",
+                    path.basename(student.face)
+                );
+
+                if (fs.existsSync(oldImagePath)) {
+                    fs.unlinkSync(oldImagePath);
+                }
+            }
+
+            // Save new image
+            student.face = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        }
+
+        await student.save();
+
+        return res.status(200).json({
+            message: "Student updated successfully",
+            student
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+const deleteStudent = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const student = await userModel.findOne({ _id: id, role: "student" });
+
+        if (!student) {
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        // Delete image
+        if (student.face) {
+            const imagePath = path.join(
+                __dirname,
+                "../../uploads",
+                path.basename(student.face)
+            );
+
+            if (fs.existsSync(imagePath)) {
+                fs.unlinkSync(imagePath);
+            }
+        }
+
+        await student.deleteOne();
+
+        return res.status(200).json({
+            message: "Student deleted successfully"
+        });
+
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
 
 module.exports = {
-    registerStudent
+    registerStudent,
+    getAllStudents,
+    getSingleStudent,
+    updateStudent,
+    deleteStudent
 }
