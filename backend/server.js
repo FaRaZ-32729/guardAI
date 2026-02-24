@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const path = require("path");
 const http = require("http");
+const { startCameraCaptureService } = require("./src/service/cameraCaptureService");
 
 
 dbConfig();
@@ -33,11 +34,19 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use('/captures', express.static(path.join(__dirname, 'public', 'captures')));
 
 
 
 // Routes
 app.use("/api", centralRoute)
+
+// startCameraCaptureService();
+ // Load face recognition models
+    await initFaceModels();
+    
+    // Start camera service
+    startCameraCaptureService();
 
 app.get("/", (req, res) => {
     res.send("Hellow FaRaZ to IOTFIY-LuckyOne");

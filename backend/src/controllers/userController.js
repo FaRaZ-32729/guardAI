@@ -1,58 +1,106 @@
 const userModel = require("../models/userModel");
 const fs = require("fs");
 const path = require("path");
+const { getFaceEmbedding } = require("../service/faceRecognizer");
 
 // Register Student
 const registerStudent = async (req, res) => {
     try {
         const { name, email, studentRollNumber, parentsEmail, department } = req.body;
 
-        // Basic validation
         if (!name || !email || !studentRollNumber || !parentsEmail || !department) {
             return res.status(400).json({ message: "All fields are required" });
         }
 
-        // Validate uploaded images
         if (!req.file) {
             return res.status(400).json({ message: "Face image is required" });
         }
 
-        // Check duplicate
         const existing = await userModel.findOne({
             $or: [{ email }, { studentRollNumber }]
         });
-
         if (existing) {
             return res.status(400).json({ message: "Student already exists" });
         }
 
-        // Create image URL
         const faceUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+        const localPath = path.join(__dirname, '../uploads', req.file.filename);
 
+        // 🎯 Generate face embedding
+        const embedding = await getFaceEmbedding(localPath);
+        if (!embedding) {
+            return res.status(400).json({ message: "Could not detect face in uploaded image" });
+        }
 
-        // Create student
         const student = new userModel({
             name,
             email,
             studentRollNumber,
             parentsEmail,
             face: faceUrl,
+            faceEmbedding: embedding, // Store embedding
             department,
             role: "student"
         });
 
         await student.save();
-
-        return res.status(201).json({
-            message: "Student registered successfully",
-            student
-        });
+        return res.status(201).json({ message: "Student registered successfully", student });
 
     } catch (error) {
         console.error(error);
         return res.status(500).json({ message: error.message || "Server error" });
     }
 };
+// const registerStudent = async (req, res) => {
+//     try {
+//         const { name, email, studentRollNumber, parentsEmail, department } = req.body;
+
+//         // Basic validation
+//         if (!name || !email || !studentRollNumber || !parentsEmail || !department) {
+//             return res.status(400).json({ message: "All fields are required" });
+//         }
+
+//         // Validate uploaded images
+//         if (!req.file) {
+//             return res.status(400).json({ message: "Face image is required" });
+//         }
+
+//         // Check duplicate
+//         const existing = await userModel.findOne({
+//             $or: [{ email }, { studentRollNumber }]
+//         });
+
+//         if (existing) {
+//             return res.status(400).json({ message: "Student already exists" });
+//         }
+
+//         // Create image URL
+//         const faceUrl = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+
+
+//         // Create student
+//         const student = new userModel({
+//             name,
+//             email,
+//             studentRollNumber,
+//             parentsEmail,
+//             face: faceUrl,
+//             department,
+//             role: "student"
+//         });
+
+//         await student.save();
+
+//         return res.status(201).json({
+//             message: "Student registered successfully",
+//             student
+//         });
+
+//     } catch (error) {
+//         console.error(error);
+//         return res.status(500).json({ message: error.message || "Server error" });
+//     }
+// };
 
 const getAllStudents = async (req, res) => {
     try {
